@@ -72,7 +72,7 @@ int main(int argc, const char *argv[])
     double sensorFrameRate = 10.0 / imgStepWidth; // frames per second for Lidar and camera
     int dataBufferSize = 2;       // no. of images which are held in memory (ring buffer) at the same time
     vector<DataFrame> dataBuffer; // list of data frames which are held in memory at the same time
-    bool bVis = false;            // visualize results
+    bool bVis = true;            // visualize results
 
     /* MAIN LOOP OVER ALL IMAGES */
 
@@ -92,8 +92,11 @@ int main(int argc, const char *argv[])
         DataFrame frame;
         frame.cameraImg = img;
         dataBuffer.push_back(frame);
+        if(dataBuffer.size() > dataBufferSize)
+            dataBuffer.erase(dataBuffer.begin());
 
-        cout << "#1 : LOAD IMAGE INTO BUFFER done" << endl;
+        cout << "#1 : LOAD IMAGE "+imgFullFilename+" INTO BUFFER done" << endl;
+        cout << "BUFFER SIZE: " << dataBuffer.size() << endl;
 
 
         /* DETECT & CLASSIFY OBJECTS */
@@ -129,18 +132,18 @@ int main(int argc, const char *argv[])
         clusterLidarWithROI((dataBuffer.end()-1)->boundingBoxes, (dataBuffer.end() - 1)->lidarPoints, shrinkFactor, P_rect_00, R_rect_00, RT);
 
         // Visualize 3D objects
-        bVis = true;
+        //bVis = true;
         if(bVis)
         {
-            show3DObjects((dataBuffer.end()-1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), true);
+            show3DObjects((dataBuffer.end()-1)->boundingBoxes, cv::Size(4.0, 20.0), cv::Size(1200, 1200), true);
         }
-        bVis = false;
+        //bVis = false;
 
         cout << "#4 : CLUSTER LIDAR POINT CLOUD done" << endl;
         
         
         // REMOVE THIS LINE BEFORE PROCEEDING WITH THE FINAL PROJECT
-        continue; // skips directly to the next image without processing what comes beneath
+        //continue; // skips directly to the next image without processing what comes beneath
 
         /* DETECT IMAGE KEYPOINTS */
 
@@ -150,15 +153,25 @@ int main(int argc, const char *argv[])
 
         // extract 2D keypoints from current image
         vector<cv::KeyPoint> keypoints; // create empty feature list for current image
-        string detectorType = "SHITOMASI";
+        string detectorType = "FAST"; //These methods can be selected:  {SHITOMASI, HARRIS, FAST, BRISK, ORB, AKAZE, SIFT}
 
-        if (detectorType.compare("SHITOMASI") == 0)
+        // only keep keypoints on the preceding vehicle
+        bool bFocusOnVehicle = false;
+        cv::Rect vehicleRect(535, 180, 180, 150);
+        if (bFocusOnVehicle)
         {
-            detKeypointsShiTomasi(keypoints, imgGray, false);
-        }
-        else
-        {
-            //...
+            cv::Mat mask(imgGray.rows, imgGray.cols, CV_8UC1, cv::Scalar(0));
+            mask(vehicleRect) = 1;
+            if (detectorType == "SHITOMASI" || detectorType == "HARRIS")
+                detKeypointsShiTomasi(keypoints, imgGray, bVis, detectorType == "HARRIS", mask);
+            else
+                detKeypointsModern(keypoints,imgGray, detectorType, bVis, mask);
+
+        } else{
+            if (detectorType == "SHITOMASI" || detectorType == "HARRIS")
+                detKeypointsShiTomasi(keypoints, imgGray, bVis, detectorType == "HARRIS");
+            else
+                detKeypointsModern(keypoints,imgGray, detectorType, bVis);
         }
 
         // optional : limit number of keypoints (helpful for debugging and learning)
@@ -184,7 +197,7 @@ int main(int argc, const char *argv[])
         /* EXTRACT KEYPOINT DESCRIPTORS */
 
         cv::Mat descriptors;
-        string descriptorType = "BRISK"; // BRISK, BRIEF, ORB, FREAK, AKAZE, SIFT
+        string descriptorType = "BRIEF"; // BINARY { BRISK, BRIEF, ORB, FREAK, AKAZE }  HOG {SIFT}
         descKeypoints((dataBuffer.end() - 1)->keypoints, (dataBuffer.end() - 1)->cameraImg, descriptors, descriptorType);
 
         // push descriptors for current frame to end of data buffer
@@ -200,7 +213,7 @@ int main(int argc, const char *argv[])
 
             vector<cv::DMatch> matches;
             string matcherType = "MAT_BF";        // MAT_BF, MAT_FLANN
-            string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
+            //string descriptorType = "DES_BINARY"; // DES_BINARY, DES_HOG
             string selectorType = "SEL_NN";       // SEL_NN, SEL_KNN
 
             matchDescriptors((dataBuffer.end() - 2)->keypoints, (dataBuffer.end() - 1)->keypoints,
