@@ -4,6 +4,8 @@
 #include <numeric>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/features2d.hpp>
+#include <set>
 
 #include "camFusion.hpp"
 #include "dataStructures.h"
@@ -104,9 +106,9 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
         // augment object with some key data
         char str1[200], str2[200];
         sprintf(str1, "id=%d, #pts=%d", it1->boxID, (int)it1->lidarPoints.size());
-        putText(topviewImg, str1, cv::Point2f(left-250, bottom+50), cv::FONT_ITALIC, 2, currColor);
+        putText(topviewImg, str1, cv::Point2f(left-250, bottom+50), cv::FONT_ITALIC, 0.5, currColor);
         sprintf(str2, "xmin=%2.2f m, yw=%2.2f m", xwmin, ywmax-ywmin);
-        putText(topviewImg, str2, cv::Point2f(left-250, bottom+125), cv::FONT_ITALIC, 2, currColor);  
+        putText(topviewImg, str2, cv::Point2f(left-250, bottom+125), cv::FONT_ITALIC, 0.5, currColor);
     }
 
     // plot distance markers
@@ -133,7 +135,7 @@ void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, 
 // associate a given bounding box with the keypoints it contains
 void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPoint> &kptsCurr, std::vector<cv::DMatch> &kptMatches)
 {
-    // ...
+
 }
 
 
@@ -154,5 +156,122 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
 
 void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bbBestMatches, DataFrame &prevFrame, DataFrame &currFrame)
 {
-    // ...
+    map< pair<int,int> , size_t > bbMatchesCounter;
+    std::vector<cv::DMatch> tt;
+    for(auto match:matches){
+        for(auto currBBox:currFrame.boundingBoxes){
+            for(auto prevBBox:prevFrame.boundingBoxes){
+                if(currBBox.roi.contains(currFrame.keypoints[match.trainIdx].pt) && prevBBox.roi.contains(prevFrame.keypoints[match.queryIdx].pt)){
+                    bbMatchesCounter[make_pair(prevBBox.boxID,currBBox.boxID)]++;
+                    if(prevBBox.boxID==0 && currBBox.boxID==0)
+                        tt.push_back(match);
+                }
+            }
+        }
+    }
+    cv::Mat matchImg = (currFrame.cameraImg).clone();
+    cv::drawMatches(prevFrame.cameraImg, prevFrame.keypoints,
+                    currFrame.cameraImg, currFrame.keypoints,
+                    tt, matchImg,
+                    cv::Scalar::all(-1), cv::Scalar::all(-1),
+                    vector<char>(), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
+    string windowName = "Matching keypoints between two camera images";
+    cv::namedWindow(windowName, 7);
+    cv::imshow(windowName, matchImg);
+    cout << "Press key to continue to next image" << endl;
+    cv::waitKey(0); // wait for key to be pressed
+    /*std::map<std::pair<int, int>, size_t> bbMatchesCounter;
+    for (const auto & match : matches)
+    {
+        // keypoint indices are same as descripors
+        int prevFrameDescIndex = match.queryIdx;
+        int currFrameDescIndex = match.trainIdx;
+        const auto & prevFramePt = prevFrame.keypoints.at(prevFrameDescIndex).pt;
+        const auto & currFramePt = currFrame.keypoints.at(currFrameDescIndex).pt;
+        for (const auto & prevFrameBB : prevFrame.boundingBoxes)
+        {
+            if (!prevFrameBB.roi.contains(prevFramePt))
+                continue;
+            for (const auto & currFrameBB : currFrame.boundingBoxes)
+            {
+                if (!currFrameBB.roi.contains(currFramePt))
+                    continue;
+                bbMatchesCounter[std::make_pair(prevFrameBB.boxID, currFrameBB.boxID)]++;
+            }
+        }
+    }*/
+    std::vector<std::tuple<int, int, size_t>> bbMatches;
+    for (const auto & pair : bbMatchesCounter)
+        bbMatches.push_back(std::make_tuple(pair.first.first, pair.first.second, pair.second));
+
+    // sort by matches count
+    std::sort(bbMatches.begin(), bbMatches.end(),
+              [](const std::tuple<int, int, size_t> & l, const std::tuple<int, int, size_t> & r)
+              {
+                  return std::get<2>(l) > std::get<2>(r);
+              });
+
+    std::set<int> visitedPrevFrameBBs;
+    bbBestMatches.clear();
+    for (const auto & tup : bbMatches)
+    {
+        if (visitedPrevFrameBBs.count(std::get<0>(tup)))
+            continue;
+        visitedPrevFrameBBs.insert(std::get<0>(tup));
+        bbBestMatches.insert(std::make_pair(std::get<0>(tup), std::get<1>(tup)));
+        cout << std::get<0>(tup) << " - " << std::get<1>(tup) << " : " <<  std::get<2>(tup) << endl;
+    }
+
+    /*for(auto boundingBox:currFrame.boundingBoxes){
+        vector<int> BBKeypointMatches(prevFrame.boundingBoxes.size(),0);
+        std::vector<cv::KeyPoint> currBBKeypoints;
+        std::vector<cv::KeyPoint> prevBBKeypoints;
+        std::vector<cv::DMatch> tt;
+
+        for (int i=0; i < currFrame.keypoints.size(); i++){
+            if(boundingBox.roi.contains(currFrame.keypoints[i].pt)) {
+                currBBKeypoints.push_back(currFrame.keypoints[i]);
+                //boundingBox.keypoints.push_back(currFrame.keypoints[i]);
+                cout << "pushed " << i << " " << endl;
+                for (auto kptMatch:matches) {
+                    cout << "looking at" << kptMatch.queryIdx << " " << kptMatch.trainIdx << " " <<endl;
+                    if (kptMatch.queryIdx == i){
+                        cout << "found " << kptMatch.trainIdx << " " << endl;
+                        prevBBKeypoints.push_back(prevFrame.keypoints[kptMatch.queryIdx]);
+                        tt.push_back(kptMatch);
+
+                    }
+
+
+                }
+                //boundingBox.kptMatches.push_back(matches[i]);
+            }
+
+        }
+
+
+        //clusterKptMatchesWithROI(boundingBox, prevFrame.keypoints, currFrame.keypoints, currFrame.kptMatches);
+        //cout<<boundingBox.boxID<<endl;
+
+        for(auto match:boundingBox.kptMatches){
+            for(int i=0; i < prevFrame.boundingBoxes.size(); i++){
+                if(prevFrame.boundingBoxes[i].roi.contains(prevFrame.keypoints[match.trainIdx].pt))
+                    BBKeypointMatches[i]++;
+            }
+        }
+        int maxElement = 0;
+        int maxValue = 0;
+        for(int i = 0; i < BBKeypointMatches.size(); i++){
+            if(BBKeypointMatches[i] > maxValue){
+                maxValue = BBKeypointMatches[i];
+                maxElement = i;
+            }
+        }
+        if(maxValue > 0)
+            bbBestMatches.insert({boundingBox.boxID,prevFrame.boundingBoxes[maxElement].boxID});
+
+
+
+    }*/
 }
