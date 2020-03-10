@@ -209,12 +209,12 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
         return p1.x < p2.x;
     });
     double minXPrev = 0, minXCurr = 0;
-    for(int i=1; i < average_factor-1 ; i++){
+    for(int i=1; i < average_factor+1 ; i++){
         minXCurr+=lidarPointsCurr[i].x;
         minXPrev+=lidarPointsPrev[i].x;
     }
-    minXCurr/=(average_factor-2);
-    minXPrev/=(average_factor-2);
+    minXCurr/=average_factor;
+    minXPrev/=average_factor;
 
     double dT = 1 / frameRate;
     TTC =  minXCurr * dT / (minXPrev - minXCurr);
@@ -251,7 +251,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
             continue;
         visitedCurrFrameBBs.insert(get<1>(pr).second);
         bbBestMatches.insert( get<1>(pr));
-        cout << get<1>(pr).first << " - " << get<1>(pr).second << " : " <<  get<0>(pr) << endl;
+        //cout << get<1>(pr).first << " - " << get<1>(pr).second << " : " <<  get<0>(pr) << endl;
     }
 
 }
