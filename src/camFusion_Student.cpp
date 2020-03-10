@@ -201,7 +201,7 @@ void computeTTCCamera(std::vector<cv::KeyPoint> &kptsPrev, std::vector<cv::KeyPo
 void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
-    int average_factor = 4;
+    int average_factor = 25;
     int start_from = 1;
     partial_sort(lidarPointsCurr.begin(),lidarPointsCurr.begin()+ average_factor + start_from,lidarPointsCurr.end(),[](LidarPoint p1, LidarPoint p2) {
         return p1.x < p2.x;

@@ -33,3 +33,41 @@ In this final project, you will implement the missing parts in the schematic. To
 2. Make a build directory in the top level project directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
 4. Run it: `./3D_object_tracking`.
+
+## Performance Evaluation
+
+All the experiment results are found in matching_3D_project.xlsx.
+
+#### LIDAR TTC
+For the lidar ttc without any adjustments to the code, one can see that it has 3 unreasonable measurements,
+at frame 7, 12 and 17. These measurements are unreasonable 
+because if one obseves the 3D viewer he can see that the proceeding car is always approaching at a contant rate, 
+this means the ttc should be relatively constant or slightly decreasing.
+in frame 7, I think the value is too high, 
+and for frames 12 and 17 the value is negative which can't happen when a car is approaching.
+
+The reason for this is that some outlier measurement are found between the ego
+and proceeding car, which can happen because of dust or rain. 
+One solution is to remove the closest point and look at the second closest. This solution was tested 
+and it's results are saved in the second row of the results file. 
+It can be seen that negative estimations are removed which is great.
+
+The first solution assumes that there is only one outlier which is not always the case, 
+to make the solution more robust one can take an average of N closest points and 
+use that average as the distance estimate. The results of this solution are found in the third and fourth row of the result file.
+It can be seen that this method gives smother TTC estimates compared to the solution of removing the minimum.
+
+This figure summaries the LIDAR TTC results
+<img src="LIDAR.jpg" width="779" height="414" /> 
+
+#### Camera TTC
+
+The best keypoint detector is FAST because it's ttc estimation is smooth using all discriptors.
+One reason for this is because of high number of matching pairs which will help give 
+a more robust median calculation for the ttc calculation.
+an other good keypoint detector is AKAZE which was shown in the previous assignment that 
+it had the highest percentage of inliers which means the keypoints themselves are suited for the task.
+
+one figure for each keypoint detector is available in the repo. 
+
+    
