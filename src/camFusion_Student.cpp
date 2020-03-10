@@ -202,14 +202,15 @@ void computeTTCLidar(std::vector<LidarPoint> &lidarPointsPrev,
                      std::vector<LidarPoint> &lidarPointsCurr, double frameRate, double &TTC)
 {
     int average_factor = 4;
-    partial_sort(lidarPointsCurr.begin(),lidarPointsCurr.begin()+ average_factor,lidarPointsCurr.end(),[](LidarPoint p1, LidarPoint p2) {
+    int start_from = 1;
+    partial_sort(lidarPointsCurr.begin(),lidarPointsCurr.begin()+ average_factor + start_from,lidarPointsCurr.end(),[](LidarPoint p1, LidarPoint p2) {
         return p1.x < p2.x;
     });
-    partial_sort(lidarPointsPrev.begin(),lidarPointsPrev.begin()+ average_factor,lidarPointsPrev.end(),[](LidarPoint p1, LidarPoint p2) {
+    partial_sort(lidarPointsPrev.begin(),lidarPointsPrev.begin()+ average_factor + start_from,lidarPointsPrev.end(),[](LidarPoint p1, LidarPoint p2) {
         return p1.x < p2.x;
     });
     double minXPrev = 0, minXCurr = 0;
-    for(int i=1; i < average_factor+1 ; i++){
+    for(int i=start_from; i < average_factor+start_from ; i++){
         minXCurr+=lidarPointsCurr[i].x;
         minXPrev+=lidarPointsPrev[i].x;
     }
@@ -251,7 +252,7 @@ void matchBoundingBoxes(std::vector<cv::DMatch> &matches, std::map<int, int> &bb
             continue;
         visitedCurrFrameBBs.insert(get<1>(pr).second);
         bbBestMatches.insert( get<1>(pr));
-        //cout << get<1>(pr).first << " - " << get<1>(pr).second << " : " <<  get<0>(pr) << endl;
+        cout << get<1>(pr).first << " - " << get<1>(pr).second << " : " <<  get<0>(pr) << endl;
     }
 
 }

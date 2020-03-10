@@ -32,7 +32,7 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
         auto t = (double)cv::getTickCount();
         matcher->match(descSource, descRef, matches); // Finds the best match for each descriptor in desc1
         t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
-        //cout << matcherType << " (NN) matching with n=" << matches.size() << " matches in " << 1000 * t / 1.0 << " ms" << endl ;
+        cout << matcherType << " (NN) matching with n=" << matches.size() << " matches in " << 1000 * t / 1.0 << " ms" << endl ;
     }
     else if (selectorType == "SEL_KNN")
     { // k nearest neighbors (k=2)
@@ -41,7 +41,7 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
         auto t = (double)cv::getTickCount();
         matcher->knnMatch(descSource, descRef, knn_matches, 2);
         t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
-        //cout << matcherType << " (KNN) matching with n=" << knn_matches.size() << " matches in " << 1000 * t / 1.0 << " ms" << endl ;
+        cout << matcherType << " (KNN) matching with n=" << knn_matches.size() << " matches in " << 1000 * t / 1.0 << " ms" << endl ;
         for (auto & knn_match : knn_matches)
         {
             if (knn_match[0].distance < 0.8 * knn_match[1].distance)
@@ -49,7 +49,7 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
                 matches.push_back(knn_match[0]);
             }
         }
-        //cout << "# keypoints removed = " << knn_matches.size() - matches.size() << endl;
+        cout << "# keypoints removed = " << knn_matches.size() - matches.size() << endl;
     }
 
 }
@@ -78,7 +78,7 @@ void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descr
     auto t = (double)cv::getTickCount();
     extractor->compute(img, keypoints, descriptors);
     t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
-    //cout << descriptorType << " descriptor extraction in " << 1000 * t / 1.0 << " ms" << endl;
+    cout << descriptorType << " descriptor extraction in " << 1000 * t / 1.0 << " ms" << endl;
 }
 
 // Detect keypoints in image using the traditional Shi-Thomasi detector
@@ -108,10 +108,10 @@ void detKeypointsShiTomasi(vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool b
         keypoints.push_back(newKeyPoint);
     }
     t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
-    /*if (!useHarrisDetector)
+    if (!useHarrisDetector)
         cout << "Shi-Tomasi detection with n=" << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
     else
-        cout << "Harris detection with n=" << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;*/
+        cout << "Harris detection with n=" << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
 
     float average = 0;
     int i = 0;
@@ -123,7 +123,7 @@ void detKeypointsShiTomasi(vector<cv::KeyPoint> &keypoints, cv::Mat &img, bool b
         }
         average = (average * i + keypoint.size) / ++i;
     }
-    //cout << "Diameter of the meaningful keypoint neighborhood " << average << endl ;
+    cout << "Diameter of the meaningful keypoint neighborhood " << average << endl ;
 
     // visualize results
     if (bVis)
@@ -149,7 +149,7 @@ void detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, cons
     auto t = (double)cv::getTickCount();
     detector->detect(img,keypoints,mask);
     t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
-    //cout << detectorType <<" detection with n=" << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+    cout << detectorType <<" detection with n=" << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
     float average = 0;
     int i = 0;
     for(const auto& keypoint: keypoints) {
@@ -160,7 +160,7 @@ void detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, cons
         }
         average = (average * i + keypoint.size) / ++i;
     }
-    //cout << "Diameter of the meaningful keypoint neighborhood " << average << endl ;
+    cout << "Diameter of the meaningful keypoint neighborhood " << average << endl ;
 
     if (bVis)
     {
